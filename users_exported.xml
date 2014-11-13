@@ -1,0 +1,16 @@
+<?xml version="1.0" ?>
+<!DOCTYPE users
+  PUBLIC '-//PKP/OJS Users XML//EN'
+  'http://pkp.sfu.ca/ojs/dtds/users.dtd'>
+<users>
+    <user>
+        <username/>
+        <first_name>Jean-Philippe</first_name>
+        <last_name>Faletta</last_name>
+        <middle_name/>
+        <initials/>
+        <gender/>
+        <email>falettj@stthom.edu</email>
+    </user>
+    
+</users>
