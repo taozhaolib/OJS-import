@@ -652,6 +652,11 @@
 					$email->appendChild($emailText);
 					$user->appendChild($email);
 
+					$affiliation = $dom->createElement("affiliation");
+					$affiliationText = $dom->createTextNode($value["Affiliation"]);
+					$affiliation->appendChild($affiliationText);
+					$user->appendChild($affiliation);
+
 					/* get the xml printed */
 					// $count = $key + 1;
 					// if($count % 50 == 0 || $total == $count){
@@ -664,7 +669,7 @@
 				 //    	echo "\nfilecount = ".$file_count."\n";
 				 //    	//$dom->save("./output_users_".$file_count.".xml");
 				 //    }
-					$dom->save("./output_users.xml");
+					$dom->save("./output_users_11-21-2014.xml");
 					// ** note: there might be multiple roles for one user and this feature is not full implemented here:
 					// $role = $dom->createElement("role");
 					// $roleText = $dom->createTextNode("author");
@@ -781,7 +786,7 @@
 		$ojs->getXmlFromArray("native.dtd");
 	}
 	else{
-		$ojs->setFiles("/Users/zhao0677/Projects/OJS-import/ojsData_users.xlsx");
+		$ojs->setFiles("/Users/zhao0677/Projects/OJS-import/APR_USERS_11-12-2014.xlsx");
 		$ojs->getUserXmlFromArray("users.dtd");
 	}
 
