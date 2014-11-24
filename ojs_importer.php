@@ -21,7 +21,9 @@
 	Class OJSImport extends AbstractPHPExcel 
 	{
 		private $files;
+		private $currentUserFile;
 		private $data;
+		private $currentUserData;
 		private $type;  // article or issue
 		private $hasHeading;
 		private $cleanData;
@@ -49,6 +51,21 @@
 				exit();
 			}
 			$this->files = $files;
+		}
+
+		function getCurrentUserDataFile()
+		{
+			return $this->currentUserFile;
+		}
+
+		function setCurrentUserDataFile($file)
+		{
+			if(!isset($file) || $file == "")
+			{
+				echo "\nThe file path for current user data is not specified!\n";
+				exit();
+			}
+			$this->currentUserFile = $file;
 		}
 
 		function getHasHeading()
@@ -579,6 +596,60 @@
 			}
 		}
 
+		private function getCurrentUsernameArray()
+		{
+			$filename = $this->currentUserFile;
+			$currentUsers = $this->currentUserData;
+
+			if(!isset($filename) || $filename == ""){
+				$this->currentUserData = "No filepath for the current users";
+				exit();
+			}
+
+			if(!isset($currentUsers) || $currentUsers == null){
+				$data = implode("", file($filename));
+			    $parser = xml_parser_create();
+			    xml_parser_set_option($parser, XML_OPTION_CASE_FOLDING, 0);
+			    xml_parser_set_option($parser, XML_OPTION_SKIP_WHITE, 1);
+			    xml_parse_into_struct($parser, $data, $values, $tags);
+			    if($values == null){
+			    	$this->currentUserData = "No current users";
+			    }
+			    xml_parser_free($parser);
+
+			    // *** If there is an existing same email address, the new imported user will be merged to the exiting user ***//
+			    foreach($values as $userInfo){
+					if($userInfo[tag] == "username" && $userInfo[value] != ""){
+						$this->currentUserData[$userInfo[value]] = $userInfo[value];
+					}
+				}
+			}
+		}
+
+		function getUserNameWithoutConflict($value)
+		{
+			$this->getCurrentUsernameArray();
+			$usernameVal = (isset($value["Username"]) && "" != $value["Username"]) ? $value["Username"] : substr($value["Firstname"],0,1).$value["Lastname"]; 
+			$currentUsers = $this->currentUserData;
+			$index = 1;
+			if(isset($currentUsers) && is_array($currentUsers)){
+				// *** If there is an existing same email address, the new imported user will be merged to the exiting user automatically
+				// *** So no worry about the repetative email issue
+				while(isset($currentUsers[$usernameVal]) && $currentUsers[$usernameVal] != "" && $index < 1000){
+					$usernameVal .= $usernameVal.$index;
+					$index++;
+				}
+			}
+			
+			if($index >= 1000)
+			{
+				echo "The username cannot be generated!\n";
+				exit();
+			}
+
+			return $usernameVal;
+		}
+
 		function getUserXmlFromArray($dtd)
 		{
 			$this->loadOjsDataFromFiles();
@@ -606,15 +677,15 @@
 
 				foreach ($cleanData as $key => $value) {
 
-
 					$user = $dom->createElement("user");
 					$child = $users->appendChild($user);
 					$users->appendChild($user);
 
+					$usernameVal = $this->getUserNameWithoutConflict($value);
 					$username = $dom->createElement("username");
 					$child = $user->appendChild($username);
-					$usernameText = $dom->createTextNode($value["Username"]);
-					$user->appendChild($usernameText);
+					$usernameText = $dom->createTextNode($usernameVal);
+					$username->appendChild($usernameText);
 
 					// ** note: password may only appear in the exported user xml files 
 					// $password = $dom->createElement("password");
@@ -648,7 +719,7 @@
 					$user->appendChild($gender);
 
 					$email = $dom->createElement("email");
-					$emailText = $dom->createTextNode($key."tao@ou.edu");
+					$emailText = $dom->createTextNode($value["Email"]);
 					$email->appendChild($emailText);
 					$user->appendChild($email);
 
@@ -669,7 +740,7 @@
 				 //    	echo "\nfilecount = ".$file_count."\n";
 				 //    	//$dom->save("./output_users_".$file_count.".xml");
 				 //    }
-					$dom->save("./output_users_11-21-2014.xml");
+					$dom->save("./output_users_11-24-2014.xml");
 					// ** note: there might be multiple roles for one user and this feature is not full implemented here:
 					// $role = $dom->createElement("role");
 					// $roleText = $dom->createTextNode("author");
@@ -777,16 +848,26 @@
 	
 	$ojs->setHasHeading(true);
 
-	//$ojs->loadOjsDataFromFiles();
-
-	//$ojs->cleanData();
+	/*
+	 	The command line should have: 
+		argument 1 as the output file;
+		argument 2 as the issue/user switch;
+		argument 3 as the current user data file;
+	*/
 
 	if($argv[1] == '1'){
 		$ojs->setFiles("/Users/zhao0677/Projects/OJS-import/ARP_32_2011.xlsx");
 		$ojs->getXmlFromArray("native.dtd");
 	}
 	else{
+		if(!isset($argv[2]) || $argv[2] == "")
+		{
+			echo "The current user data file path is not specified!";
+			exit();
+		}
 		$ojs->setFiles("/Users/zhao0677/Projects/OJS-import/APR_USERS_11-12-2014.xlsx");
+		$ojs->setCurrentUserDataFile($argv[2]);
+		//echo "currenty user file path = ".$ojs->getCurrentUserDataFile();
 		$ojs->getUserXmlFromArray("users.dtd");
 	}
 
