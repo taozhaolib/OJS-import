@@ -142,7 +142,7 @@
 			$issueCover->appendChild($coverImage);
 			$imageHref = $dom->createElement("href");
 			$child = $coverImage->appendChild($imageHref);
-			$coverHref = "./".$key."/".$filename;
+			$coverHref = basename(dirname($this->getFiles())).'/'.$key."/".$filename;
 			$child->setAttributeNode(new DOMAttr('src',$filepath));
 			$child->setAttributeNode(new DOMAttr('mime_type','application/jpg'));
 
@@ -346,6 +346,54 @@
 			}
 		}
 
+		function addPermissions($dom, $article, $year){
+			$permissions = $dom->createElement("permissions");
+			$article->appendChild($permissions);
+			if(strpos($year, "-") !== false){
+				$year = intval($year) + 1;
+				$year .= "";
+			}
+			$copyright_year = $dom->createElement("copyright_year");
+			$permissions->appendChild($copyright_year);
+			$copyright_yearText = $dom->createTextNode($year);
+			$copyright_year->appendChild($copyright_yearText);
+		}
+
+		function addDoi($dom, $article, $year, $vol, $issueNum = 0, $pageRange = "0"){
+			$doi = $dom->createElement("id");
+			$child = $article->appendChild($doi);
+			$child->setAttributeNode(new DOMAttr('type', 'doi'));
+			$doiText = $dom->createTextNode("10.15763/issn.2374-7781.$year.$vol.".(empty($issueNum)? 0 : $issueNum).".$pageRange");
+			$doi->appendChild($doiText);
+		}
+
+		function addPubDate($dom, $entity, $season, $year){
+			$pubDate = $dom->createElement("date_published");
+			$entity->appendChild($pubDate);
+			$pubDateText = $year+"";
+			$nextYear = intval($year) + 1;
+			switch($season){
+				case "Summer":
+					$pubDateText .= "-07-01";
+					break;
+				case "Spring":
+					$pubDateText .= "-04-01";
+					break;
+				case "Fall":
+					$pubDateText .= "-11-01";
+					break;
+				case "Winter":
+					$pubDateText = $nextYear . "-01-01"; 
+					break;
+				default:
+					echo "Cannot generate pub date!";
+					exit();
+					break;
+			}
+			$pubDateText = $dom->createTextNode($pubDateText);
+			$pubDate->appendChild($pubDateText);
+		}
+
 		// For convenience, $dtd is the prefix of the dtd schema file name:
 		// example: $dtd = "native" for the file of native.dtd
 		// The dtd file should be in the same directory
@@ -410,17 +458,13 @@
 						Add the cover information
 					*/
 
-					$this->addCoverInfo($dom, $issue, "./".$key."/".$value["Cover"][Filename]);
+					$this->addCoverInfo($dom, $issue, basename(dirname($this->getFiles())).'/'.$key."/".$value["Cover"][Filename]);
 
 					/*
 						Some other information such as data published, open access
 					*/
 
-					$issueDate = $dom->createElement("date_published");
-					//$issueYearText = $dom->createTextNode($key_arr[1]);
-					$issueDateText = $dom->createTextNode("2014-09-18");
-					$issueDate->appendChild($issueDateText);
-					$issue->appendChild($issueDate);
+					$this->addPubDate($dom, $issue, $key_arr[1], $key_arr[2]);
 
 					$issueAccess = $dom->createElement("open_access");
 					//$issueYearText = $dom->createTextNode($key_arr[1]);
@@ -430,7 +474,7 @@
 					/*
 						Add the front matter
 					*/
-					$this->AddFrontInfo($dom, $issue,"./".$key."/".$value["FRO"][Filename], $value["FRO"][Author1_Last], $value["FRO"][Author1_First], "frontmatter-000@ou.edu");
+					$this->AddFrontInfo($dom, $issue,basename(dirname($this->getFiles())).'/'.$key."/".$value["FRO"][Filename], $value["FRO"][Author1_Last], $value["FRO"][Author1_First], "frontmatter-000@ou.edu");
 
 					
 
@@ -479,6 +523,7 @@
 									$abbrev->appendChild($abbrevText);
 									$child = $bksSection->appendChild($abbrev);
 									$child->setAttributeNode(new DOMAttr('locale','en_US'));
+
 								}
 								$section = $bksSection;
 								break;
@@ -576,12 +621,26 @@
 
 						$fileHref = $dom->createElement("href");
 						$child = $articleFile->appendChild($fileHref);
-						$child->setAttributeNode(new DOMAttr('src','./'.$key."/".$articleInfo[Filename]));
+						$child->setAttributeNode(new DOMAttr('src',basename(dirname($this->getFiles())).'/'.$key."/".$articleInfo[Filename]));
 						$child->setAttributeNode(new DOMAttr('mime_type','application/pdf'));
+
+						if(!empty($articleInfo["Page Range"])){
+							$pages = $dom->createElement("pages");
+							$child = $article->appendChild($pages);
+							$pagesText = $dom->createTextNode($articleInfo["Page Range"]);
+							$pages->appendChild($pagesText);
+						}
 
 
 						$this->addArticleAuthorInfo($dom, $article, $articleInfo, "tao-".$emailCount."@oouu.edu");
 						$emailCount++;
+
+						$this->addPermissions($dom, $article, $key_arr[2]);
+						if($articleInfo["Type"] === "ART"){
+							$this->addDoi($dom, $article, $key_arr[2], $key_arr[0], $issueNum, $articleInfo["Page Range"]);
+						}
+
+						$this->addPubDate($dom, $article, $key_arr[1], $key_arr[2]);
 					}
 
 					unset($artSection);
@@ -592,7 +651,7 @@
 				}
 
 			    /* get the xml printed */
-			    $dom->save("./output-2011.xml");
+			    $dom->save(dirname($this->getFiles())."/output.xml");
 			}
 		}
 
@@ -758,7 +817,7 @@
 			$data = $this->data;
 			foreach ($data as $key => $value) {
 
-				if($value[Issue] == "" || $value[Volume] == "" || $value[Year] == "")
+				if(empty($value[Issue]) || empty($value[Volume]) || empty($value[Year]))
 					continue;
 
 				if(!isset($value[Filename]) || $value[Filename] == "")
@@ -791,7 +850,8 @@
 					// 	$cleanData[$issue]["MISC"] = $value;
 					// 	break;
 					default:
-						echo "The record type cannot be specified!\n";
+						echo "The record type of " .$value[Type]. " of Volume:" . $value[Volume] . " and Issue:" .
+						$value[Issue] . " and Year:" . $value[Year] . " cannot be specified!\n";						
 						die;
 						break;
 				} 
@@ -856,7 +916,7 @@
 	*/
 
 	if($argv[1] == '1'){
-		$ojs->setFiles("/Users/zhao0677/Projects/OJS-import/ARP_32_2011.xlsx");
+		$ojs->setFiles("/Users/zhao0677/Projects/OJS-import-1.0/9-12-2016_import/V26/v26.xlsx");
 		$ojs->getXmlFromArray("native.dtd");
 	}
 	else{
