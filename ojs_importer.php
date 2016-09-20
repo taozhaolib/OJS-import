@@ -135,6 +135,10 @@
 
 		private function addCoverInfo($dom, $issue, $filepath)
 		{
+			if(empty($filepath)){
+				echo "The cover file path is NOT specified!\n";
+				exit();
+			}
 			$issueCover = $dom->createElement("cover");
 			$child = $issue->appendChild($issueCover);
 			$child->setAttributeNode(new DOMAttr('locale','en_US'));
@@ -216,14 +220,15 @@
 			$articleLabelText = $dom->createTextNode("PDF");
 			$articleLabel->appendChild($articleLabelText);
 			$articleGalley->appendChild($articleLabel);
+			if(!empty($filepath) && strpos($filepath, ".pdf") !== false){
+				$articleFile = $dom->createElement("file");
+				$articleGalley->appendChild($articleFile);
 
-			$articleFile = $dom->createElement("file");
-			$articleGalley->appendChild($articleFile);
-
-			$fileHref = $dom->createElement("href");
-			$child = $articleFile->appendChild($fileHref);
-			$child->setAttributeNode(new DOMAttr('src',$filepath));
-			$child->setAttributeNode(new DOMAttr('mime_type','application/pdf'));
+				$fileHref = $dom->createElement("href");
+				$child = $articleFile->appendChild($fileHref);
+				$child->setAttributeNode(new DOMAttr('src',$filepath));
+				$child->setAttributeNode(new DOMAttr('mime_type','application/pdf'));
+			}
 
 
 			// // create the section for articles:
@@ -379,6 +384,7 @@
 				case "Spring":
 					$pubDateText .= "-04-01";
 					break;
+				case "Autumn":
 				case "Fall":
 					$pubDateText .= "-11-01";
 					break;
@@ -616,13 +622,15 @@
 						$articleLabel->appendChild($articleLabelText);
 						$articleGalley->appendChild($articleLabel);
 
-						$articleFile = $dom->createElement("file");
-						$articleGalley->appendChild($articleFile);
+						if(!empty($articleInfo[Filename])){
+							$articleFile = $dom->createElement("file");
+							$articleGalley->appendChild($articleFile);
 
-						$fileHref = $dom->createElement("href");
-						$child = $articleFile->appendChild($fileHref);
-						$child->setAttributeNode(new DOMAttr('src',basename(dirname($this->getFiles())).'/'.$key."/".$articleInfo[Filename]));
-						$child->setAttributeNode(new DOMAttr('mime_type','application/pdf'));
+							$fileHref = $dom->createElement("href");
+							$child = $articleFile->appendChild($fileHref);
+							$child->setAttributeNode(new DOMAttr('src',basename(dirname($this->getFiles())).'/'.$key."/".$articleInfo[Filename]));
+							$child->setAttributeNode(new DOMAttr('mime_type','application/pdf'));
+						}
 
 						if(!empty($articleInfo["Page Range"])){
 							$pages = $dom->createElement("pages");
@@ -916,7 +924,7 @@
 	*/
 
 	if($argv[1] == '1'){
-		$ojs->setFiles("/Users/zhao0677/Projects/OJS-import-1.0/9-12-2016_import/V26/v26.xlsx");
+		$ojs->setFiles("/Users/zhao0677/Projects/OJS-import-1.0/9-12-2016_import/V1/v1.xlsx");
 		$ojs->getXmlFromArray("native.dtd");
 	}
 	else{
